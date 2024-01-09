@@ -14,14 +14,11 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
-	"github.com/jarcoal/httpmock"
-	"github.com/maxatome/tdhttpmock"
 	"github.com/stakwork/sphinx-tribes/auth"
 	"github.com/stakwork/sphinx-tribes/config"
 	"github.com/stakwork/sphinx-tribes/db"
 	"github.com/stakwork/sphinx-tribes/handlers/mocks"
 	dbMocks "github.com/stakwork/sphinx-tribes/mocks"
-	"github.com/stakwork/sphinx-tribes/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -521,16 +518,9 @@ func TestMakeBountyPayment(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 
 		// // test keysend payment
-		url := fmt.Sprintf("%s/payment", config.RelayUrl)
-		httpmock.Activate()
-		defer httpmock.DeactivateAndReset()
+		// url := fmt.Sprintf("%s/payment", config.RelayUrl)
 
-		bodyData := utils.BuildKeysendBodyData(existingBounty.Price, paymentHistory.ReceiverPubKey, "")
-
-		// mock an HTTP 200 OK response
-		httpmock.RegisterMatcherResponder("POST", url,
-			tdhttpmock.JSONBody(bodyData),
-			httpmock.NewStringResponder(200, `{"success": true}`))
+		// bodyData := utils.BuildKeysendBodyData(existingBounty.Price, paymentHistory.ReceiverPubKey, "")
 
 		assert.Equal(t, http.StatusOK, rr.Code)
 		mockDb.AssertExpectations(t)
