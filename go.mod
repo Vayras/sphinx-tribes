@@ -18,9 +18,12 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/h2non/gock v1.2.0
 	github.com/imroc/req v0.3.2
+	github.com/jarcoal/httpmock v1.3.1 // indirect
 	github.com/jinzhu/gorm v1.9.16
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
+	github.com/maxatome/go-testdeep v1.14.0 // indirect
+	github.com/maxatome/tdhttpmock v1.0.0 // indirect
 	github.com/nbd-wtf/ln-decodepay v1.11.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/redis/go-redis/v9 v9.3.0

@@ -4640,6 +4640,62 @@ func (_c *Database_UpdateBountyNullColumn_Call) RunAndReturn(run func(db.Bounty,
 	return _c
 }
 
+// UpdateBountyPaid provides a mock function with given fields: b
+func (_m *Database) UpdateBountyPaid(b db.Bounty) (db.Bounty, error) {
+	ret := _m.Called(b)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateBountyPaid")
+	}
+
+	var r0 db.Bounty
+	var r1 error
+	if rf, ok := ret.Get(0).(func(db.Bounty) (db.Bounty, error)); ok {
+		return rf(b)
+	}
+	if rf, ok := ret.Get(0).(func(db.Bounty) db.Bounty); ok {
+		r0 = rf(b)
+	} else {
+		r0 = ret.Get(0).(db.Bounty)
+	}
+
+	if rf, ok := ret.Get(1).(func(db.Bounty) error); ok {
+		r1 = rf(b)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Database_UpdateBountyPaid_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateBountyPaid'
+type Database_UpdateBountyPaid_Call struct {
+	*mock.Call
+}
+
+// UpdateBountyPaid is a helper method to define mock.On call
+//   - b db.Bounty
+func (_e *Database_Expecter) UpdateBountyPaid(b interface{}) *Database_UpdateBountyPaid_Call {
+	return &Database_UpdateBountyPaid_Call{Call: _e.mock.On("UpdateBountyPaid", b)}
+}
+
+func (_c *Database_UpdateBountyPaid_Call) Run(run func(b db.Bounty)) *Database_UpdateBountyPaid_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(db.Bounty))
+	})
+	return _c
+}
+
+func (_c *Database_UpdateBountyPaid_Call) Return(_a0 db.Bounty, _a1 error) *Database_UpdateBountyPaid_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Database_UpdateBountyPaid_Call) RunAndReturn(run func(db.Bounty) (db.Bounty, error)) *Database_UpdateBountyPaid_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateBountyPayment provides a mock function with given fields: b
 func (_m *Database) UpdateBountyPayment(b db.Bounty) (db.Bounty, error) {
 	ret := _m.Called(b)

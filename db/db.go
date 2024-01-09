@@ -711,6 +711,16 @@ func (db database) UpdateBounty(b Bounty) (Bounty, error) {
 	return b, nil
 }
 
+func (db database) UpdateBountyPaid(b Bounty) (Bounty, error) {
+	now := time.Now()
+
+	b.Paid = true
+	b.PaidDate = &now
+	b.CompletionDate = &now
+	db.db.Where("created", b.Created).Updates(&b)
+	return b, nil
+}
+
 func (db database) UpdateBountyPayment(b Bounty) (Bounty, error) {
 	db.db.Model(&b).Where("created", b.Created).Updates(map[string]interface{}{
 		"paid": b.Paid,
@@ -1300,15 +1310,11 @@ func (db database) WithdrawBudget(sender_pubkey string, org_uuid string, amount 
 		"total_budget": newBudget,
 	})
 
-	now := time.Now()
-
 	budgetHistory := PaymentHistory{
 		OrgUuid:        org_uuid,
 		Amount:         amount,
 		Status:         true,
 		PaymentType:    "withdraw",
-		Created:        &now,
-		Updated:        &now,
 		SenderPubKey:   sender_pubkey,
 		ReceiverPubKey: "",
 		BountyId:       0,
@@ -1317,6 +1323,10 @@ func (db database) WithdrawBudget(sender_pubkey string, org_uuid string, amount 
 }
 
 func (db database) AddPaymentHistory(payment PaymentHistory) PaymentHistory {
+	now := time.Now()
+	payment.Created = &now
+	payment.Updated = &now
+
 	db.db.Create(&payment)
 
 	// get organization budget and subtract payment from total budget

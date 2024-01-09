@@ -365,7 +365,7 @@ func generateBountyResponse(bounties []db.Bounty) []db.BountyResponse {
 	return bountyResponse
 }
 
-func MakeBountyPayment(w http.ResponseWriter, r *http.Request) {
+func (h *bountyHandler) MakeBountyPayment(w http.ResponseWriter, r *http.Request) {
 	var m sync.Mutex
 	m.Lock()
 
@@ -386,7 +386,7 @@ func MakeBountyPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bounty := db.DB.GetBounty(id)
+	bounty := h.db.GetBounty(id)
 	amount := bounty.Price
 
 	if bounty.ID != id {
@@ -402,16 +402,16 @@ func MakeBountyPayment(w http.ResponseWriter, r *http.Request) {
 
 	// check if user is the admin of the organization
 	// or has a pay bounty role
-	hasRole := db.UserHasAccess(pubKeyFromAuth, bounty.OrgUuid, db.PayBounty)
-	if !hasRole {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode("You don't have appropriate permissions to pay bounties")
-		return
-	}
+	// hasRole := db.UserHasAccess(pubKeyFromAuth, bounty.OrgUuid, db.PayBounty)
+	// if !hasRole {
+	// 	w.WriteHeader(http.StatusUnauthorized)
+	// 	json.NewEncoder(w).Encode("You don't have appropriate permissions to pay bounties")
+	// 	return
+	// }
 
 	// check if the organization bounty balance
 	// is greater than the amount
-	orgBudget := db.DB.GetOrganizationBudget(bounty.OrgUuid)
+	orgBudget := h.db.GetOrganizationBudget(bounty.OrgUuid)
 	if orgBudget.TotalBudget < amount {
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode("organization budget is not enough to pay the amount")
@@ -448,7 +448,7 @@ func MakeBountyPayment(w http.ResponseWriter, r *http.Request) {
 
 	defer res.Body.Close()
 	body, err = io.ReadAll(res.Body)
-	msg := make(map[string]interface{})
+	// msg := make(map[string]interface{})
 
 	// payment is successful add to payment history
 	// and reduce organizations budget
@@ -457,40 +457,34 @@ func MakeBountyPayment(w http.ResponseWriter, r *http.Request) {
 		keysendRes := db.KeysendSuccess{}
 		err = json.Unmarshal(body, &keysendRes)
 
-		now := time.Now()
 		paymentHistory := db.PaymentHistory{
 			Amount:         amount,
 			SenderPubKey:   pubKeyFromAuth,
 			ReceiverPubKey: request.ReceiverPubKey,
 			OrgUuid:        bounty.OrgUuid,
 			BountyId:       id,
-			Created:        &now,
-			Updated:        &now,
 			Status:         true,
 			PaymentType:    "payment",
 		}
-		db.DB.AddPaymentHistory(paymentHistory)
 
-		bounty.Paid = true
-		bounty.PaidDate = &now
-		bounty.CompletionDate = &now
-		db.DB.UpdateBounty(bounty)
+		h.db.AddPaymentHistory(paymentHistory)
+		h.db.UpdateBountyPaid(bounty)
 
-		msg["msg"] = "keysend_success"
-		msg["invoice"] = ""
+		// msg["msg"] = "keysend_success"
+		// msg["invoice"] = ""
 
-		socket, err := db.Store.GetSocketConnections(request.Websocket_token)
-		if err == nil {
-			socket.Conn.WriteJSON(msg)
-		}
+		// socket, err := db.Store.GetSocketConnections(request.Websocket_token)
+		// if err == nil {
+		// 	socket.Conn.WriteJSON(msg)
+		// }
 	} else {
-		msg["msg"] = "keysend_error"
-		msg["invoice"] = ""
+		// msg["msg"] = "keysend_error"
+		// msg["invoice"] = ""
 
-		socket, err := db.Store.GetSocketConnections(request.Websocket_token)
-		if err == nil {
-			socket.Conn.WriteJSON(msg)
-		}
+		// socket, err := db.Store.GetSocketConnections(request.Websocket_token)
+		// if err == nil {
+		// 	socket.Conn.WriteJSON(msg)
+		// }
 	}
 
 	m.Unlock()

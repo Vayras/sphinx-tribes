@@ -1,11 +1,12 @@
 package routes
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi"
 	"github.com/stakwork/sphinx-tribes/auth"
 	"github.com/stakwork/sphinx-tribes/db"
 	"github.com/stakwork/sphinx-tribes/handlers"
-	"net/http"
 )
 
 func BountyRoutes() chi.Router {
@@ -24,7 +25,7 @@ func BountyRoutes() chi.Router {
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.PubKeyContext)
-		r.Post("/pay/{id}", handlers.MakeBountyPayment)
+		r.Post("/pay/{id}", bountyHandler.MakeBountyPayment)
 		r.Post("/budget/withdraw", bountyHandler.BountyBudgetWithdraw)
 
 		r.Post("/", bountyHandler.CreateOrEditBounty)

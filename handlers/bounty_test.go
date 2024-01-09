@@ -11,13 +11,17 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi"
+	"github.com/jarcoal/httpmock"
+	"github.com/maxatome/tdhttpmock"
 	"github.com/stakwork/sphinx-tribes/auth"
 	"github.com/stakwork/sphinx-tribes/config"
 	"github.com/stakwork/sphinx-tribes/db"
 	"github.com/stakwork/sphinx-tribes/handlers/mocks"
 	dbMocks "github.com/stakwork/sphinx-tribes/mocks"
+	"github.com/stakwork/sphinx-tribes/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -446,6 +450,89 @@ func TestDeleteBounty(t *testing.T) {
 		_ = json.Unmarshal(rr.Body.Bytes(), &returnedBounty)
 		assert.Equal(t, http.StatusOK, rr.Code)
 		assert.EqualValues(t, existingBounty, returnedBounty)
+		mockDb.AssertExpectations(t)
+	})
+
+}
+
+func TestMakeBountyPayment(t *testing.T) {
+	mockDb := dbMocks.NewDatabase(t)
+	mockHttpClient := mocks.NewHttpClient(t)
+	bHandler := NewBountyHandler(mockHttpClient, mockDb)
+	ctx := context.WithValue(context.Background(), auth.ContextKey, "test-key")
+
+	t.Run("it should make bounty payment", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(bHandler.MakeBountyPayment)
+
+		now := time.Now()
+		existingBounty := db.Bounty{
+			ID:          1,
+			OwnerID:     "test-key",
+			Paid:        false,
+			Show:        true,
+			Price:       1000,
+			OrgUuid:     "org_uuid",
+			Created:     now.Unix(),
+			Title:       "MY BOUNTY",
+			Description: "MY Description",
+		}
+
+		requestBody := db.BountyPayRequest{
+			ReceiverPubKey:  "test-rec-key",
+			RouteHint:       "route_hint",
+			Websocket_token: "token",
+		}
+
+		paymentHistory := db.PaymentHistory{
+			Amount:         existingBounty.Price,
+			SenderPubKey:   "test-key",
+			ReceiverPubKey: requestBody.ReceiverPubKey,
+			OrgUuid:        existingBounty.OrgUuid,
+			BountyId:       existingBounty.ID,
+			Status:         true,
+			PaymentType:    "payment",
+		}
+
+		// paymentHistories := []db.PaymentHistory{paymentHistory}
+
+		budgetResponse := db.BountyBudget{
+			ID:          1,
+			TotalBudget: 10000,
+			OrgUuid:     existingBounty.OrgUuid,
+			Created:     &now,
+			Updated:     &now,
+		}
+
+		mockDb.On("GetBounty", uint(1)).Return(existingBounty).Once()
+		mockDb.On("GetOrganizationBudget", existingBounty.OrgUuid).Return(budgetResponse).Once()
+		mockDb.On("AddPaymentHistory", paymentHistory).Return(db.PaymentHistory{}).Once()
+		mockDb.On("UpdateBountyPaid", existingBounty).Return(existingBounty, errors.New("some-error")).Once()
+
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("id", "1")
+
+		body, _ := json.Marshal(requestBody)
+
+		req, err := http.NewRequestWithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx), http.MethodPost, "/1", bytes.NewReader(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		handler.ServeHTTP(rr, req)
+
+		// // test keysend payment
+		url := fmt.Sprintf("%s/payment", config.RelayUrl)
+		httpmock.Activate()
+		defer httpmock.DeactivateAndReset()
+
+		bodyData := utils.BuildKeysendBodyData(existingBounty.Price, paymentHistory.ReceiverPubKey, "")
+
+		// mock an HTTP 200 OK response
+		httpmock.RegisterMatcherResponder("POST", url,
+			tdhttpmock.JSONBody(bodyData),
+			httpmock.NewStringResponder(200, `{"success": true}`))
+
+		assert.Equal(t, http.StatusOK, rr.Code)
 		mockDb.AssertExpectations(t)
 	})
 }
