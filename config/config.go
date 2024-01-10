@@ -50,6 +50,10 @@ func InitConfig() {
 	if JwtKey == "" {
 		JwtKey = GenerateRandomString()
 	}
+
+	if RelayUrl == "" {
+		RelayUrl = "http://test.com"
+	}
 }
 
 func StripSuperAdmins(adminStrings string) []string {

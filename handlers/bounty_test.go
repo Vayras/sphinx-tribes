@@ -19,6 +19,7 @@ import (
 	"github.com/stakwork/sphinx-tribes/db"
 	"github.com/stakwork/sphinx-tribes/handlers/mocks"
 	dbMocks "github.com/stakwork/sphinx-tribes/mocks"
+	"github.com/stakwork/sphinx-tribes/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -452,11 +453,22 @@ func TestDeleteBounty(t *testing.T) {
 
 }
 
+// MockExternalAPI is a mock implementation of the ExternalAPI interface
+type MockMakeKeysendApiCall struct {
+	mock.Mock
+}
+
+func (m *MockMakeKeysendApiCall) MakeKeysendApiCall(url string, amount uint, request db.BountyPayRequest) (*http.Response, error) {
+	args := m.Called(url, amount, request)
+	return args.Get(0).(*http.Response), args.Error(1)
+}
+
 func TestMakeBountyPayment(t *testing.T) {
 	mockDb := dbMocks.NewDatabase(t)
 	mockHttpClient := mocks.NewHttpClient(t)
 	bHandler := NewBountyHandler(mockHttpClient, mockDb)
 	ctx := context.WithValue(context.Background(), auth.ContextKey, "test-key")
+	mockAPI := new(MockMakeKeysendApiCall)
 
 	t.Run("it should make bounty payment", func(t *testing.T) {
 		rr := httptest.NewRecorder()
@@ -491,8 +503,6 @@ func TestMakeBountyPayment(t *testing.T) {
 			PaymentType:    "payment",
 		}
 
-		// paymentHistories := []db.PaymentHistory{paymentHistory}
-
 		budgetResponse := db.BountyBudget{
 			ID:          1,
 			TotalBudget: 10000,
@@ -517,12 +527,29 @@ func TestMakeBountyPayment(t *testing.T) {
 		}
 		handler.ServeHTTP(rr, req)
 
-		// // test keysend payment
-		// url := fmt.Sprintf("%s/payment", config.RelayUrl)
+		// Prepare a sample external API response
 
-		// bodyData := utils.BuildKeysendBodyData(existingBounty.Price, paymentHistory.ReceiverPubKey, "")
+		responsePayload := http.Response{
+			StatusCode: 200,
+			Status:     "200",
+		}
 
+		mockAPI.On("MakeKeysendApiCall", mock.Anything, mock.Anything).Return(responsePayload, nil)
+
+		// Perform the HTTP request to the handler
+		url := fmt.Sprintf("%s/payment", config.RelayUrl)
+
+		bodyData := utils.BuildKeysendBodyData(existingBounty.Price, requestBody.ReceiverPubKey, requestBody.RouteHint)
+		jsonBody := []byte(bodyData)
+
+		_, err = http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Validate the response
 		assert.Equal(t, http.StatusOK, rr.Code)
 		mockDb.AssertExpectations(t)
+		mockAPI.AssertExpectations(t)
 	})
 }

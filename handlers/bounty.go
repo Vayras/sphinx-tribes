@@ -429,26 +429,18 @@ func (h *bountyHandler) MakeBountyPayment(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	url := fmt.Sprintf("%s/payment", config.RelayUrl)
-
-	bodyData := utils.BuildKeysendBodyData(amount, request.ReceiverPubKey, request.RouteHint)
-
-	jsonBody := []byte(bodyData)
-
-	client := &http.Client{}
-	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonBody))
-	req.Header.Set("x-user-token", config.RelayAuthKey)
-	req.Header.Set("Content-Type", "application/json")
-	res, err := client.Do(req)
-
-	if err != nil {
-		log.Printf("Request Failed: %s", err)
-		return
+	// make keysend payment
+	var url string
+	if (config.RelayUrl) == "" {
+		url = "http://test.com/payment"
+	} else {
+		url = fmt.Sprintf("%s/payment", config.RelayUrl)
 	}
 
-	defer res.Body.Close()
+	res, err := MakeKeysendApiCall(url, amount, request)
+
 	body, err = io.ReadAll(res.Body)
-	// msg := make(map[string]interface{})
+	msg := make(map[string]interface{})
 
 	// payment is successful add to payment history
 	// and reduce organizations budget
@@ -470,24 +462,47 @@ func (h *bountyHandler) MakeBountyPayment(w http.ResponseWriter, r *http.Request
 		h.db.AddPaymentHistory(paymentHistory)
 		h.db.UpdateBountyPaid(bounty)
 
-		// msg["msg"] = "keysend_success"
-		// msg["invoice"] = ""
+		msg["msg"] = "keysend_success"
+		msg["invoice"] = ""
 
-		// socket, err := db.Store.GetSocketConnections(request.Websocket_token)
-		// if err == nil {
-		// 	socket.Conn.WriteJSON(msg)
-		// }
+		socket, err := db.Store.GetSocketConnections(request.Websocket_token)
+		if err == nil {
+			socket.Conn.WriteJSON(msg)
+		}
 	} else {
-		// msg["msg"] = "keysend_error"
-		// msg["invoice"] = ""
+		msg["msg"] = "keysend_error"
+		msg["invoice"] = ""
 
-		// socket, err := db.Store.GetSocketConnections(request.Websocket_token)
-		// if err == nil {
-		// 	socket.Conn.WriteJSON(msg)
-		// }
+		socket, err := db.Store.GetSocketConnections(request.Websocket_token)
+		if err == nil {
+			socket.Conn.WriteJSON(msg)
+		}
 	}
 
 	m.Unlock()
+}
+
+func MakeKeysendApiCall(url string, amount uint, request db.BountyPayRequest) (*http.Response, error) {
+	bodyData := utils.BuildKeysendBodyData(amount, request.ReceiverPubKey, request.RouteHint)
+	jsonBody := []byte(bodyData)
+
+	fmt.Println("URL ==", url)
+
+	client := &http.Client{}
+	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonBody))
+	req.Header.Set("x-user-token", config.RelayAuthKey)
+	req.Header.Set("Content-Type", "application/json")
+	res, err := client.Do(req)
+
+	if err != nil {
+		log.Printf("Request Failed: %s", err)
+		return nil, err
+	}
+
+	defer res.Body.Close()
+
+	fmt.Println("RESPONSE ===", res, err)
+	return res, nil
 }
 
 func (h *bountyHandler) BountyBudgetWithdraw(w http.ResponseWriter, r *http.Request) {
