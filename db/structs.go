@@ -552,17 +552,17 @@ type WorkspaceUsersData struct {
 }
 
 type WorkspaceFeatures struct {
-	ID             uint       `json:"id"`
-	Uuid           string     `json:"uuid"`
-	WorkspaceUuid  string     `json:"workspace_uuid"`
-	Name           string     `json:"name"`
-	Brief          string     `json:"brief"`
-	Requirements   string     `json:"requirements"`
-	Architecture   string     `json:"architecture"`
-	Created        *time.Time `json:"created"`
-	Updated        *time.Time `json:"updated"`
-	CreatedBy      string     `json:"created_by"`
-	UpdatedBy      string     `json:"updated_by"`
+	ID            uint       `json:"id"`
+	Uuid          string     `json:"uuid"`
+	WorkspaceUuid string     `json:"workspace_uuid"`
+	Name          string     `json:"name"`
+	Brief         string     `json:"brief"`
+	Requirements  string     `json:"requirements"`
+	Architecture  string     `json:"architecture"`
+	Created       *time.Time `json:"created"`
+	Updated       *time.Time `json:"updated"`
+	CreatedBy     string     `json:"created_by"`
+	UpdatedBy     string     `json:"updated_by"`
 }
 
 type BountyRoles struct {
@@ -679,7 +679,7 @@ type NewPaymentHistory struct {
 	Amount         uint        `json:"amount"`
 	BountyId       uint        `json:"bounty_id"`
 	PaymentType    PaymentType `json:"payment_type"`
-	OrgUuid        string      `gorm:"-" json:"org_uuid"`
+	OrgUuid        string      `gorm:"-" json:"org_uuid,omitempty"`
 	WorkspaceUuid  string      `json:"workspace_uuid,omitempty"`
 	SenderPubKey   string      `json:"sender_pubkey"`
 	ReceiverPubKey string      `json:"receiver_pubkey"`
@@ -689,11 +689,11 @@ type NewPaymentHistory struct {
 }
 
 type PaymentHistoryData struct {
-	PaymentHistory NewPaymentHistory
-	SenderName     string `json:"sender_name"`
-	ReceiverName   string `json:"receiver_name"`
-	SenderImg      string `json:"sender_img"`
-	ReceiverImg    string `json:"receiver_img"`
+	NewPaymentHistory
+	SenderName   string `json:"sender_name"`
+	ReceiverName string `json:"receiver_name"`
+	SenderImg    string `json:"sender_img"`
+	ReceiverImg  string `json:"receiver_img"`
 }
 
 type PaymentData struct {
@@ -844,11 +844,43 @@ type MetricsBountyCsv struct {
 	DateAssigned *time.Time `json:"date_assigned"`
 }
 
-type FilterStattuCount struct {
+type FilterStatusCount struct {
 	Open      int64 `json:"open"`
 	Assigned  int64 `json:"assigned"`
 	Completed int64 `json:"completed"`
 	Paid      int64 `json:"paid"`
+}
+
+type Conversations struct {
+	Uuid          string     `json:"uuid"`
+	WorkspaceUuid string     `json:"workspace_uuid"`
+	FeatureUuid   string     `json:"feature_uuid"`
+	UserstoryUuid string     `json:"userstory_uuid"`
+	Field         string     `json:"field"`
+	Created       *time.Time `json:"created"`
+	Updated       *time.Time `json:"updated"`
+	CreatedBy     string     `json:"created_by"`
+	UpdatedBy     string     `json:"updated_by"`
+}
+
+type ConversationMessages struct {
+	Uuid             string     `json:"uuid"`
+	ConversationUuid string     `json:"conversation_uuid"`
+	Direction        uint       `json:"uint" validate:"lte=1"`
+	Message          string     `json:"message"`
+	Created          *time.Time `json:"created"`
+	Updated          *time.Time `json:"updated"`
+	CreatedBy        string     `json:"created_by"`
+	UpdatedBy        string     `json:"updated_by"`
+}
+
+type UserConversationBody struct {
+	Uuid          string `json:"uuid"`
+	WorkspaceUuid string `json:"workspace_uuid"`
+	FeatureUuid   string `json:"feature_uuid"`
+	UserstoryUuid string `json:"userstory_uuid"`
+	Field         string `json:"field"`
+	Message       string `json:"message"`
 }
 
 func (Person) TableName() string {

@@ -1,16 +1,19 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/rs/xid"
 	"github.com/stakwork/sphinx-tribes/auth"
+	"github.com/stakwork/sphinx-tribes/config"
 	"github.com/stakwork/sphinx-tribes/db"
 	"github.com/stakwork/sphinx-tribes/utils"
 	"gorm.io/gorm"
@@ -640,11 +643,11 @@ func GetPaymentHistory(w http.ResponseWriter, r *http.Request) {
 		sender := db.DB.GetPersonByPubkey(payment.SenderPubKey)
 		receiver := db.DB.GetPersonByPubkey(payment.ReceiverPubKey)
 		paymentData := db.PaymentHistoryData{
-			PaymentHistory: payment,
-			SenderName:     sender.UniqueName,
-			SenderImg:      sender.Img,
-			ReceiverName:   receiver.UniqueName,
-			ReceiverImg:    receiver.Img,
+			NewPaymentHistory: payment,
+			SenderName:        sender.UniqueName,
+			SenderImg:         sender.Img,
+			ReceiverName:      receiver.UniqueName,
+			ReceiverImg:       receiver.Img,
 		}
 		paymentHistoryData = append(paymentHistoryData, paymentData)
 	}
@@ -794,4 +797,145 @@ func (oh *workspaceHandler) UpdateWorkspace(w http.ResponseWriter, r *http.Reque
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(p)
+}
+
+func PostConversation(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	pubKeyFromAuth, _ := ctx.Value(auth.ContextKey).(string)
+	if pubKeyFromAuth == "" {
+		fmt.Println("no pubkey from auth")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	conversation := db.Conversations{}
+	conversationBody := db.UserConversationBody{}
+	conversationMessage := db.ConversationMessages{}
+	body, _ := io.ReadAll(r.Body)
+	r.Body.Close()
+	err := json.Unmarshal(body, &conversationBody)
+
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusNotAcceptable)
+		return
+	}
+
+	now := time.Now()
+
+	if conversationBody.Uuid == "" {
+		conversation.Uuid = xid.New().String()
+		conversation.Field = conversationBody.Field
+		conversation.WorkspaceUuid = conversationBody.WorkspaceUuid
+		conversation.FeatureUuid = conversationBody.FeatureUuid
+		conversation.UserstoryUuid = conversationBody.UserstoryUuid
+		conversation.CreatedBy = pubKeyFromAuth
+		conversation.Created = &now
+		conversation.Updated = &now
+
+		db.DB.CreateConversation(conversation)
+	}
+
+	conversationMessage.Uuid = xid.New().String()
+	conversationMessage.ConversationUuid = conversation.Uuid
+	conversationMessage.Message = conversationBody.Message
+	conversationMessage.Direction = 1
+	conversationMessage.CreatedBy = pubKeyFromAuth
+	conversationMessage.Created = &now
+	conversationMessage.Updated = &now
+
+	db.DB.CreateConversationMessage(conversationMessage)
+
+	webhookUrl := config.StakworkWebhookHost + "/workspaces/conversation/receive"
+
+	processConversationWorkflow(conversationBody.Message, webhookUrl)
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode("Added conversation")
+}
+
+func ReceiveConversation(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func GetConversation(w http.ResponseWriter, r *http.Request) {
+	keys := r.URL.Query()
+	conversationUuid := keys.Get("uuid")
+
+	ctx := r.Context()
+	pubKeyFromAuth, _ := ctx.Value(auth.ContextKey).(string)
+	if pubKeyFromAuth == "" {
+		fmt.Println("no pubkey from auth")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	conversations := db.DB.GetConversation(conversationUuid)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(conversations)
+}
+
+func processConversationWorkflow(msg string, webhook string) {
+	stakworkKey := fmt.Sprintf("Token token=%s", os.Getenv("STAKWORK_KEY"))
+	if stakworkKey == "" {
+		fmt.Println("Youtube Download Error: Stakwork key not found")
+	} else {
+		type Vars struct {
+			UserMessage string `json:"user_message"`
+			WebhookUrl  string `json:"webhook_url"`
+		}
+
+		type Attributes struct {
+			Vars Vars `json:"vars"`
+		}
+
+		type SetVar struct {
+			Attributes Attributes `json:"attributes"`
+		}
+
+		type WorkflowParams struct {
+			SetVar SetVar `json:"set_var"`
+		}
+
+		workflows := WorkflowParams{
+			SetVar: SetVar{
+				Attributes: Attributes{
+					Vars: Vars{UserMessage: msg, WebhookUrl: webhook},
+				},
+			},
+		}
+
+		body := map[string]interface{}{
+			"name":            "SphinxTribes Conversation",
+			"workflow_id":     "18217",
+			"workflow_params": workflows,
+		}
+
+		buf, err := json.Marshal(body)
+		if err != nil {
+			fmt.Println("Youtube error: Unable to parse message into byte buffer", err)
+			return
+		}
+
+		requestUrl := "https://jobs.stakwork.com/api/v1/projects"
+		request, reqErr := http.NewRequest(http.MethodPost, requestUrl, bytes.NewBuffer(buf))
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("Authorization", stakworkKey)
+
+		if reqErr != nil {
+			fmt.Println("Conversation Workflow Request Error ===", err)
+		}
+
+		client := &http.Client{}
+		response, err := client.Do(request)
+		if err != nil {
+			fmt.Println("Youtube Download Response Error ===", err)
+		}
+		defer response.Body.Close()
+		res, err := io.ReadAll(response.Body)
+		if err != nil {
+			fmt.Println("Youtube Download Response Body Error ==", err)
+		}
+		fmt.Println("Conversation Succcess ==", string(res))
+	}
 }
