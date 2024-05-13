@@ -67,7 +67,10 @@ func InitDB() {
 	db.AutoMigrate(&ConnectionCodes{})
 	db.AutoMigrate(&BountyRoles{})
 	db.AutoMigrate(&UserInvoiceData{})
+<<<<<<< HEAD
 	db.AutoMigrate(&WorkspaceRepositories{})
+=======
+>>>>>>> aaafe059 (rebasing)
 	db.AutoMigrate(&WorkspaceFeatures{})
 
 	DB.MigrateTablesWithOrgUuid()
