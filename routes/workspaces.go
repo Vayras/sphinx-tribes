@@ -47,6 +47,9 @@ func WorkspaceRoutes() chi.Router {
 		r.Get("/repositories/{uuid}", workspaceHandlers.GetWorkspaceRepositorByWorkspaceUuid)
 		r.Get("/{workspace_uuid}/repository/{uuid}", workspaceHandlers.GetWorkspaceRepoByWorkspaceUuidAndRepoUuid)
 		r.Delete("/{workspace_uuid}/repository/{uuid}", workspaceHandlers.DeleteWorkspaceRepository)
+		r.Get("/conversation", handlers.GetConversation)
+		r.Post("/conversation/post", handlers.PostConversation)
+		r.Post("/conversation/receive", handlers.ReceiveConversation)
 	})
 	return r
 }

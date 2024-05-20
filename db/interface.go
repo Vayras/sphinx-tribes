@@ -120,7 +120,7 @@ type Database interface {
 	ChangeWorkspaceDeleteStatus(workspace_uuid string, status bool) Workspace
 	UpdateWorkspaceForDeletion(uuid string) error
 	DeleteAllUsersFromWorkspace(uuid string) error
-	GetFilterStatusCount() FilterStattuCount
+	GetFilterStatusCount() FilterStatusCount
 	UserHasManageBountyRoles(pubKeyFromAuth string, uuid string) bool
 	BountiesPaidPercentage(r PaymentDateRange, workspace string) uint
 	TotalSatsPosted(r PaymentDateRange, workspace string) uint
@@ -156,4 +156,7 @@ type Database interface {
 	GetFeatureStoriesByFeatureUuid(featureUuid string) ([]FeatureStory, error)
 	GetFeatureStoryByUuid(featureUuid, storyUuid string) (FeatureStory, error)
 	DeleteFeatureStoryByUuid(featureUuid, storyUuid string) error
+	GetConversation(uuid string) Conversations
+	CreateConversation(c Conversations) Conversations
+	CreateConversationMessage(c ConversationMessages) ConversationMessages
 }
