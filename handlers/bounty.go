@@ -19,6 +19,8 @@ import (
 	"gorm.io/gorm"
 )
 
+var m sync.Mutex
+
 type bountyHandler struct {
 	httpClient               HttpClient
 	db                       db.Database
@@ -584,9 +586,7 @@ func (h *bountyHandler) MakeBountyPayment(w http.ResponseWriter, r *http.Request
 }
 
 func (h *bountyHandler) BountyBudgetWithdraw(w http.ResponseWriter, r *http.Request) {
-	var m sync.Mutex
 	m.Lock()
-
 	ctx := r.Context()
 	pubKeyFromAuth, _ := ctx.Value(auth.ContextKey).(string)
 
